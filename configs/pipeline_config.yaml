@@ -1,0 +1,85 @@
+# Pipeline Configuration for Decomposed Parsing
+
+# Paths
+paths:
+  input_dir: "data/input"
+  intermediate_dir: "data/intermediate"
+  annotations_dir: "data/input/annotations"
+  models_dir: "data/models"
+  output_dir: "outputs"
+
+# Stage 1: Element Detection (YOLO-based)
+detection:
+  yolo:
+    model_path: "data/models/yolo_detector.pt"
+    confidence_threshold: 0.5
+    iou_threshold: 0.4
+
+# Stage 2: Element Classification
+classification:
+  model_name: "mobilenet_v2"  # Options: "mobilenet_v2" or "resnet18"
+  num_classes: 3  # observation, decision, action
+  input_size: 224
+  batch_size: 32
+  
+  # Training parameters
+  training:
+    epochs: 50
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    train_split: 0.8
+    
+  # Model path
+  model_path: "data/models/element_classifier.pth"
+
+# Stage 3: OCR
+ocr:
+  engine: "paddleocr"  # Options: "paddleocr" or "easyocr"
+  language: "nl"  # Dutch
+  use_gpu: true
+  preserve_line_breaks: true
+  confidence_threshold: 0.5
+
+# Stage 4: Arrow Detection
+arrows:
+  # Line detection parameters
+  line_detection:
+    hough_threshold: 50
+    min_line_length: 30
+    max_line_gap: 10
+    
+  # Endpoint matching
+  endpoint_matching:
+    max_distance: 50  # pixels
+    
+  # Arrowhead detection
+  arrowhead:
+    method: "morphological"  # Options: "morphological" or "cnn"
+    cnn_model_path: "data/models/arrowhead_classifier.pth"
+    
+  # Label extraction
+  label_extraction:
+    search_radius: 30  # pixels around arrow midpoint
+    expected_labels: ["ja", "nee"]
+
+# Stage 5: LLM Reasoning
+reasoning:
+  model_name: "Qwen/Qwen2.5-7B-Instruct"
+  device: "cuda"  # Options: "cuda" or "cpu"
+  max_new_tokens: 2048
+  temperature: 0.1
+  top_p: 0.9
+  
+  # Prompt configuration
+  prompt:
+    system_message: "You are an expert at parsing procedural knowledge from industrial troubleshooting diagrams."
+    include_examples: true
+
+# Evaluation
+evaluation:
+  entity_matching:
+    similarity_threshold: 0.85
+    normalization: true
+    
+  relation_matching:
+    require_exact_match: true
