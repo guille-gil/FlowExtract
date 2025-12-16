@@ -13,7 +13,7 @@ pip install -r requirements.txt
 
 **For small datasets (40-50 images):**
 
-Label your images with bounding boxes (3 classes: observation, decision, action) using [Roboflow](https://roboflow.com/) or [LabelImg](https://github.com/heartexlabs/labelImg).
+Label your images with bounding boxes (4 classes: observation, decision, action, arrowhead) using [Roboflow](https://roboflow.com/) or [LabelImg](https://github.com/heartexlabs/labelImg).
 
 Train with aggressive augmentation:
 ```bash
@@ -40,28 +40,6 @@ cp runs/detect/train/weights/best.pt data/models/yolo_detector.pt
 **Note:** YOLOv8s (not YOLOv8n) works better with small datasets. Built-in augmentation effectively multiplies your dataset.
 
 ### 3. Configure LLM (for MacBook Air)
-
-Edit `configs/pipeline_config.yaml`:
-
-**Option 1: Smaller model (recommended)**
-```yaml
-reasoning:
-  model_name: "Qwen/Qwen2.5-3B-Instruct"  # Faster, lower memory
-```
-
-**Option 2: Quantized 7B model**
-```yaml
-reasoning:
-  model_name: "Qwen/Qwen2.5-7B-Instruct"
-  load_in_4bit: true  # Reduces memory to ~4-5GB
-```
-
-### 4. Train Classifier (Optional)
-```bash
-python -m src.train --data-dir element_crops --epochs 50
-```
-
-### 5. Run Pipeline
 ```bash
 python -m src.main
 ```
@@ -69,27 +47,31 @@ python -m src.main
 ## Project Structure
 
 ```
-├── src/                      # All source code
-│   ├── detection/           # YOLO element detection
-│   ├── classification/      # Element type classification
-│   ├── ocr/                # Text extraction
-│   ├── arrows/             # Arrow detection
-│   ├── reasoning/          # LLM reasoning
-│   ├── evaluation/         # Evaluation metrics
-│   ├── utils/              # Utilities
-│   ├── main.py             # Main pipeline
-│   ├── train.py            # Train classifier
-│   └── evaluate.py         # Evaluate results
+├── src/                    # Source code
+│   ├── main.py            # Main pipeline script
+│   ├── evaluate.py        # Evaluation script
+│   ├── pipeline/          # All 3 pipeline stages
+│   │   ├── stage1_detector.py      # YOLO detection (6 classes)
+│   │   ├── stage2_ocr.py           # Text extraction
+│   │   └── stage3_connections.py   # Directed graph derivation
+│   ├── evaluation/        # Evaluation metrics
+│   └── utils/             # Utilities
 ├── data/
 │   ├── input/
-│   │   ├── tocaps/         # Input images
-│   │   └── annotations/    # Ground truth
-│   ├── intermediate/       # Stage outputs
-│   └── models/             # Trained weights
-├── docs/                   # Documentation
-├── configs/                # Configuration
-└── notebooks/              # Exploration
+│   │   ├── tocaps/        # Input TOCAP images
+│   │   └── yolo_annotations/  # YOLO training data (6 classes)
+│   │       └── yolo_data.yaml  # YOLO config
+│   ├── intermediate/      # Stage outputs
+│   │   ├── detection/     # Stage 1 output
+│   │   ├── ocr/          # Stage 2 output
+│   │   └── arrows/       # Stage 3 output (directed graphs)
+│   └── models/           # Trained weights
+│       └── yolo_detector.pt
+├── configs/              # Configuration
+│   └── pipeline_config.yaml
+└── docs/                 # Documentation
 ```
+└── notebooks/              # Exploration
 
 ## Usage
 
@@ -103,11 +85,6 @@ python -m src.main
 python -m src.main --stage 1  # Detection only
 ```
 
-**Train classifier:**
-```bash
-python -m src.train --data-dir element_crops --epochs 50
-```
-
 **Evaluate:**
 ```bash
 python -m src.evaluate \
@@ -117,34 +94,50 @@ python -m src.evaluate \
 
 ## Pipeline Stages
 
-1. **Detection** (YOLO) → Bounding boxes
-2. **Classification** (CNN) → Element types  
-3. **OCR** (PaddleOCR/EasyOCR) → Text content
-4. **Arrows** (Hough) → Connection graph
-5. **Reasoning** (LLM) → Entities & relations
+1. **Detection** (YOLO) → Detect & classify 6 element types:
+   - process, decision, document, terminator, connector, arrowhead
+2. **OCR** (PaddleOCR/EasyOCR) → Extract text content from elements
+3. **Connection Derivation** → Build directed graph:
+   - Line tracing from arrowhead blunt end to source box(es)
+   - Junction detection for merged lines
+   - Proximity matching for target detection (pointy end)
+   - **Direction-based label assignment** for ja/nee labels (optional)
+   - Output: Directed graph with nodes (elements) and edges (leads_to relations)
 
-## Research Setup Notes
+## Output Format
 
-**Small Dataset (40-50 images):**
-- Use YOLOv8s (not YOLOv8n) for better learning
-- YOLO's built-in augmentation is sufficient
-- Expected detection accuracy: 70-80%
-- Suitable for proof-of-concept research
+The pipeline produces a **directed graph** for each TOCAP diagram:
+- **Nodes**: Detected elements (process, decision, document, terminator, connector)
+- **Edges**: "leads_to" relations derived from arrow connections
+  - Optional "label" field for ja/nee annotations (when present on arrows)
+- **Format**: JSON with nodes and edges arrays
 
-**MacBook Air Constraints:**
-- Use Qwen2.5-3B or 4-bit quantized 7B
-- Expect 30-60 seconds per page for LLM reasoning
-- 16GB RAM recommended (8GB minimum with quantization)
-
+**Example:**
+```json
+{
+  "tocap_001.png": {
+    "nodes": {
+      "box_1": {"type": "terminator", "text": "Start Tocap 26"},
+      "box_2": {"type": "decision", "text": "Voldoet de kap aan..."},
+      "box_3": {"type": "document", "text": "A1) Wissel product"}
+    },
+    "edges": [
+      {"source": "box_1", "target": "box_2", "label": null},
+      {"source": "box_2", "target": "box_3", "label": "nee"},
+      {"source": "box_2", "target": "box_4", "label": "ja"}
+    ]
+  }
+}
+```
 ## Configuration
 
 Edit `configs/pipeline_config.yaml` to customize:
 - YOLO model path and thresholds
-- LLM model size and quantization
-- OCR engine (PaddleOCR/EasyOCR)
-- All pipeline parameters
-
-See `docs/` for detailed documentation.
+- Detection confidence and IoU thresholds
+- OCR engine selection (PaddleOCR or EasyOCR)
+- Connection derivation parameters
+- Label assignment radii and scoring
+.
 
 ## Requirements
 
