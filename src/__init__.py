@@ -1,27 +1,12 @@
 """
-Decomposed Parsing Pipeline
+Decomposed Parsing from Industrial Troubleshooting Guides
 
-A modular pipeline for extracting procedural knowledge from industrial 
-troubleshooting diagrams using YOLO detection, classification, OCR, 
-arrow detection, and LLM reasoning.
+A pipeline for extracting procedural knowledge from industrial
+troubleshooting diagrams using YOLO detection, OCR,
+and connection derivation to build directed graphs.
 """
 
-# Stage 1: Element Detection
-from .detection import ElementDetector, YOLODetector
-
-# Stage 2: Element Classification  
-from .classification import ElementClassifier, ElementDataset
-
-# Stage 3: OCR
-from .ocr import OCREngine
-
-# Stage 4: Arrow Detection
-from .arrows import ArrowDetector
-
-# Stage 5: LLM Reasoning
-from .reasoning import LLMReasoner
-
-# Evaluation
+from .pipeline import ElementDetector, OCREngine, ArrowDetector
 from .evaluation import Evaluator
 
 # Utilities
