@@ -11,11 +11,9 @@ from pathlib import Path
 from typing import Dict
 
 from utils.io_utils import load_config, get_image_paths
-from detection.detector import ElementDetector
-from classification.classifier import ElementClassifier
-from ocr.ocr_engine import OCREngine
-from arrows.arrow_detector import ArrowDetector
-from reasoning.llm_reasoner import LLMReasoner
+from pipeline.stage1_detector import ElementDetector
+from pipeline.stage2_ocr import OCREngine
+from pipeline.stage3_connections import ArrowDetector
 from evaluation.evaluator import Evaluator
 
 
@@ -33,14 +31,14 @@ def run_stage_1(config: Dict, input_dir: str, output_dir: str):
 
 
 def run_stage_2(config: Dict, input_dir: str, detection_dir: str, output_dir: str):
-    """Run Stage 2: Element Classification."""
+    """Run Stage 2: OCR."""
     print("\n" + "="*60)
-    print("STAGE 2: ELEMENT CLASSIFICATION")
+    print("STAGE 2: OCR TEXT EXTRACTION")
     print("="*60)
     
-    classifier = ElementClassifier(config)
+    ocr_engine = OCREngine(config)
     
-    # Get all detection JSON files
+    # Get all detection JSON files (YOLO already classified)
     detection_files = list(Path(detection_dir).glob('*_detection.json'))
     
     results = []
@@ -59,42 +57,7 @@ def run_stage_2(config: Dict, input_dir: str, detection_dir: str, output_dir: st
             print(f"Warning: Could not find image for {detection_file}")
             continue
         
-        result = classifier.process_detections(image_path, str(detection_file), output_dir)
-        results.append(result)
-        print(f"✓ Classified {image_name}")
-    
-    print(f"\nClassification complete. Processed {len(results)} images.")
-    return results
-
-
-def run_stage_3(config: Dict, input_dir: str, classification_dir: str, output_dir: str):
-    """Run Stage 3: OCR."""
-    print("\n" + "="*60)
-    print("STAGE 3: OCR TEXT EXTRACTION")
-    print("="*60)
-    
-    ocr_engine = OCREngine(config)
-    
-    # Get all classification JSON files
-    classification_files = list(Path(classification_dir).glob('*_classification.json'))
-    
-    results = []
-    for classification_file in classification_files:
-        # Find corresponding image
-        image_name = classification_file.stem.replace('_classification', '')
-        image_paths = get_image_paths(input_dir)
-        image_path = None
-        
-        for img_path in image_paths:
-            if Path(img_path).stem == image_name:
-                image_path = img_path
-                break
-        
-        if image_path is None:
-            print(f"Warning: Could not find image for {classification_file}")
-            continue
-        
-        result = ocr_engine.process_elements(image_path, str(classification_file), output_dir)
+        result = ocr_engine.process_elements(image_path, str(detection_file), output_dir)
         results.append(result)
         print(f"✓ Extracted text from {image_name}")
     
@@ -102,10 +65,10 @@ def run_stage_3(config: Dict, input_dir: str, classification_dir: str, output_di
     return results
 
 
-def run_stage_4(config: Dict, input_dir: str, ocr_dir: str, output_dir: str):
-    """Run Stage 4: Arrow Detection."""
+def run_stage_3(config: Dict, input_dir: str, ocr_dir: str, output_dir: str):
+    """Run Stage 3: Connection Derivation."""
     print("\n" + "="*60)
-    print("STAGE 4: ARROW DETECTION")
+    print("STAGE 3: CONNECTION DERIVATION")
     print("="*60)
     
     arrow_detector = ArrowDetector(config)
@@ -130,36 +93,29 @@ def run_stage_4(config: Dict, input_dir: str, ocr_dir: str, output_dir: str):
             print(f"Warning: Could not find image for {ocr_file}")
             continue
         
-        result = arrow_detector.detect_arrows(image_path, str(ocr_file), output_dir, ocr_engine)
-        results.append(result)
-        print(f"✓ Detected {result['num_arrows']} arrows in {image_name}")
-    
-    print(f"\nArrow detection complete. Processed {len(results)} images.")
-    return results
-
-
-def run_stage_5(config: Dict, arrows_dir: str, output_dir: str):
-    """Run Stage 5: LLM Reasoning."""
-    print("\n" + "="*60)
-    print("STAGE 5: LLM REASONING")
-    print("="*60)
-    
-    reasoner = LLMReasoner(config)
-    
-    # Get all arrow JSON files
-    arrow_files = list(Path(arrows_dir).glob('*_arrows.json'))
-    
-    results = []
-    for arrow_file in arrow_files:
-        image_name = arrow_file.stem.replace('_arrows', '')
+        # Load OCR data and extract labels
+        from utils.io_utils import load_json
+        ocr_data = load_json(str(ocr_file))
+        labels = ocr_engine.extract_decision_labels(ocr_data)
         
-        result = reasoner.reason(str(arrow_file), output_dir)
+        # Detect arrows with label assignment
+        result = arrow_detector.detect_arrows(image_path, ocr_data, labels)
+        
+        # Save result
+        from utils.io_utils import save_json, ensure_dir
+        ensure_dir(output_dir)
+        output_path = os.path.join(output_dir, f"{image_name}_arrows.json")
+        save_json(result, output_path)
+        
         results.append(result)
-        print(f"✓ Reasoned over {image_name}: {len(result['entities'])} entities, {len(result['relations'])} relations")
+        
+        # Count labeled edges
+        labeled_edges = sum(1 for e in result['graph']['edges'] if 'label' in e)
+        print(f"✓ Detected {result['num_edges']} connections ({labeled_edges} labeled) in {image_name}")
     
-    print(f"\nLLM reasoning complete. Processed {len(results)} images.")
+    print(f"\nConnection derivation complete. Processed {len(results)} images.")
     return results
-
+        
 
 def main():
     parser = argparse.ArgumentParser(description='Decomposed Parsing Pipeline')
@@ -172,7 +128,7 @@ def main():
     parser.add_argument(
         '--stage',
         type=str,
-        choices=['all', '1', '2', '3', '4', '5'],
+        choices=['all', '1', '2', '3'],
         default='all',
         help='Which stage to run (default: all)'
     )
@@ -194,50 +150,71 @@ def main():
     # Load configuration
     config = load_config(args.config)
     
-    # Set paths
-    input_dir = args.input_dir or config['paths']['input_dir']
-    intermediate_dir = config['paths']['intermediate_dir']
-    output_dir = args.output_dir or config['paths']['output_dir']
+    # Get paths from config
+    paths_config = config.get('paths', {})
+    input_dir = args.input_dir or paths_config.get('input_dir', 'data/input/tocaps')
+    intermediate_dir = paths_config.get('intermediate_dir', 'data/intermediate')
+    output_dir = args.output_dir or paths_config.get('output_dir', 'data/output')
     
-    # Stage output directories
+    # Create intermediate subdirectories for each stage
     detection_dir = os.path.join(intermediate_dir, 'detection')
-    classification_dir = os.path.join(intermediate_dir, 'classification')
     ocr_dir = os.path.join(intermediate_dir, 'ocr')
     arrows_dir = os.path.join(intermediate_dir, 'arrows')
-    reasoning_dir = os.path.join(intermediate_dir, 'reasoning')
+    
+    # Ensure directories exist
+    from utils.io_utils import ensure_dir
+    ensure_dir(detection_dir)
+    ensure_dir(ocr_dir)
+    ensure_dir(arrows_dir)
+    ensure_dir(output_dir)
     
     print("="*60)
-    print("DECOMPOSED PARSING PIPELINE")
+    print("DECOMPOSED PARSING PIPELINE (3 STAGES)")
     print("="*60)
-    print(f"Input directory: {input_dir}")
-    print(f"Intermediate directory: {intermediate_dir}")
-    print(f"Output directory: {output_dir}")
+    print(f"Input: {input_dir}")
+    print(f"Intermediate: {intermediate_dir}")
+    print(f"Output: {output_dir}")
     print(f"Running stage(s): {args.stage}")
     
-    # Run stages
-    if args.stage == 'all' or args.stage == '1':
+    # Run selected stage(s)
+    if args.stage in ['all', '1']:
+        print("\n" + "="*60)
+        print("RUNNING STAGE 1: ELEMENT DETECTION")
+        print("="*60)
         run_stage_1(config, input_dir, detection_dir)
     
-    if args.stage == 'all' or args.stage == '2':
-        run_stage_2(config, input_dir, detection_dir, classification_dir)
+    if args.stage in ['all', '2']:
+        print("\n" + "="*60)
+        print("RUNNING STAGE 2: OCR TEXT EXTRACTION")
+        print("="*60)
+        run_stage_2(config, input_dir, detection_dir, ocr_dir)
     
-    if args.stage == 'all' or args.stage == '3':
-        run_stage_3(config, input_dir, classification_dir, ocr_dir)
-    
-    if args.stage == 'all' or args.stage == '4':
-        run_stage_4(config, input_dir, ocr_dir, arrows_dir)
-    
-    if args.stage == 'all' or args.stage == '5':
-        run_stage_5(config, arrows_dir, reasoning_dir)
+    if args.stage in ['all', '3']:
+        print("\n" + "="*60)
+        print("RUNNING STAGE 3: CONNECTION DERIVATION")
+        print("="*60)
+        run_stage_3(config, input_dir, ocr_dir, arrows_dir)
     
     print("\n" + "="*60)
     print("PIPELINE COMPLETE")
     print("="*60)
+    print(f"\nIntermediate results: {intermediate_dir}/")
+    print(f"  - Detection: {detection_dir}/")
+    print(f"  - OCR: {ocr_dir}/")
+    print(f"  - Arrows: {arrows_dir}/")
     
+    # If all stages run, copy final predictions to output
     if args.stage == 'all':
-        print(f"\nFinal results saved to: {reasoning_dir}")
-    else:
-        print(f"\nStage {args.stage} results saved to intermediate directory")
+        print(f"\nFinal predictions will be saved to: {output_dir}/")
+        print("(Copying directed graphs from arrows stage...)")
+        
+        import shutil
+        arrow_files = list(Path(arrows_dir).glob('*_arrows.json'))
+        for arrow_file in arrow_files:
+            dest = os.path.join(output_dir, arrow_file.name)
+            shutil.copy(arrow_file, dest)
+        
+        print(f"✓ Copied {len(arrow_files)} prediction files to {output_dir}/")
 
 
 if __name__ == '__main__':
