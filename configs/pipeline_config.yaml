@@ -3,10 +3,10 @@
 # Paths
 paths:
   input_dir: "data/input"
-  intermediate_dir: "data/intermediate"
+  intermediate_dir: "data/intermediate"  # Stage-by-stage results
+  output_dir: "data/output"              # Final predictions only
   annotations_dir: "data/input/annotations"
   models_dir: "data/models"
-  output_dir: "outputs"
 
 # Stage 1: Element Detection (YOLO-based)
 detection:
@@ -15,24 +15,7 @@ detection:
     confidence_threshold: 0.5
     iou_threshold: 0.4
 
-# Stage 2: Element Classification
-classification:
-  model_name: "mobilenet_v2"  # Options: "mobilenet_v2" or "resnet18"
-  num_classes: 3  # observation, decision, action
-  input_size: 224
-  batch_size: 32
-  
-  # Training parameters
-  training:
-    epochs: 50
-    learning_rate: 0.001
-    weight_decay: 0.0001
-    train_split: 0.8
-    
-  # Model path
-  model_path: "data/models/element_classifier.pth"
-
-# Stage 3: OCR
+# Stage 2: OCR
 ocr:
   engine: "paddleocr"  # Options: "paddleocr" or "easyocr"
   language: "nl"  # Dutch
@@ -40,40 +23,25 @@ ocr:
   preserve_line_breaks: true
   confidence_threshold: 0.5
 
-# Stage 4: Arrow Detection
+# Stage 3: Connection Derivation
 arrows:
   # Line detection parameters
   line_detection:
-    hough_threshold: 50
-    min_line_length: 30
-    max_line_gap: 10
-    
-  # Endpoint matching
-  endpoint_matching:
-    max_distance: 50  # pixels
-    
-  # Arrowhead detection
-  arrowhead:
-    method: "morphological"  # Options: "morphological" or "cnn"
-    cnn_model_path: "data/models/arrowhead_classifier.pth"
-    
-  # Label extraction
-  label_extraction:
-    search_radius: 30  # pixels around arrow midpoint
-    expected_labels: ["ja", "nee"]
-
-# Stage 5: LLM Reasoning
-reasoning:
-  model_name: "Qwen/Qwen2.5-7B-Instruct"
-  device: "cuda"  # Options: "cuda" or "cpu"
-  max_new_tokens: 2048
-  temperature: 0.1
-  top_p: 0.9
+    hough_threshold: 50        # Lower = more sensitive
+    min_line_length: 20        # Minimum line length (pixels)
+    max_line_gap: 15           # Maximum gap to bridge (pixels)
   
-  # Prompt configuration
-  prompt:
-    system_message: "You are an expert at parsing procedural knowledge from industrial troubleshooting diagrams."
-    include_examples: true
+  # Connection matching parameters
+  line_attachment_threshold: 15   # Distance to consider line attached to arrowhead
+  target_touch_threshold: 20      # Distance for pointy end → target box
+  source_trace_threshold: 30      # Distance for line endpoint → source box
+  junction_detection_threshold: 15 # Distance to detect line junctions
+  
+  # Label assignment parameters (ja/nee on arrows)
+  label_assignment:
+    single_arrow_radius: 100      # Search radius for single arrows (pixels)
+    branching_radius: 150         # Search radius for branching decisions (pixels)
+    distance_penalty_factor: 50.0 # Normalization factor for distance penalty
 
 # Evaluation
 evaluation:
