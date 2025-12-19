@@ -186,6 +186,11 @@ marimo/_lsp/
 __marimo__/
 
 
+# YOLO training
+runs/
+*.pt
+!data/intermediate/models/*.pt  # Keep pretrained weights in models folder
+
 # Proprietary data folder
 data/
 docs/
