@@ -7,7 +7,6 @@ and connection derivation to build directed graphs.
 """
 
 from .pipeline import ElementDetector, OCREngine, ArrowDetector
-from .evaluation import Evaluator
 
 # Utilities
 from .utils import (
@@ -26,18 +25,10 @@ __version__ = '0.1.0'
 __all__ = [
     # Detection
     'ElementDetector',
-    'YOLODetector',
-    # Classification
-    'ElementClassifier',
-    'ElementDataset',
     # OCR
     'OCREngine',
     # Arrows
     'ArrowDetector',
-    # Reasoning
-    'LLMReasoner',
-    # Evaluation
-    'Evaluator',
     # Utils
     'load_config',
     'save_json',

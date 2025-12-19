@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Main Pipeline Script
 
@@ -10,11 +9,50 @@ import os
 from pathlib import Path
 from typing import Dict
 
-from utils.io_utils import load_config, get_image_paths
-from pipeline.stage1_detector import ElementDetector
-from pipeline.stage2_ocr import OCREngine
-from pipeline.stage3_connections import ArrowDetector
-from evaluation.evaluator import Evaluator
+from .utils.io_utils import load_config, get_image_paths
+from .pipeline.stage1_detector import ElementDetector
+from .pipeline.stage2_ocr import OCREngine
+from .pipeline.stage3_connections import ArrowDetector
+
+import shutil
+
+def clear_intermediate_files(intermediate_dir: str, output_dir: str = None, stages: list = None):
+    """Clear intermediate and output files before running pipeline.
+    
+    Args:
+        intermediate_dir: Path to intermediate directory
+        output_dir: Path to output directory (optional)
+        stages: List of stages to clear (1, 2, 3) or None for all
+    """
+    stage_dirs = {
+        1: 'detection',
+        2: 'ocr', 
+        3: 'arrows'
+    }
+    
+    if stages is None:
+        stages = [1, 2, 3]
+    
+    for stage in stages:
+        if stage in stage_dirs:
+            dir_path = Path(intermediate_dir) / stage_dirs[stage]
+            if dir_path.exists():
+                # Remove all files in the directory
+                for f in dir_path.glob('*'):
+                    if f.is_file():
+                        f.unlink()
+                print(f"✓ Cleared {stage_dirs[stage]}/")
+    
+    # Clear output directory if provided and stage 3 is being run
+    if output_dir and (stages is None or 3 in stages):
+        output_path = Path(output_dir)
+        if output_path.exists():
+            cleared_count = 0
+            for f in output_path.glob('*_arrows.json'):
+                f.unlink()
+                cleared_count += 1
+            if cleared_count > 0:
+                print(f"✓ Cleared {cleared_count} files from output/")
 
 
 def run_stage_1(config: Dict, input_dir: str, output_dir: str):
@@ -65,7 +103,7 @@ def run_stage_2(config: Dict, input_dir: str, detection_dir: str, output_dir: st
     return results
 
 
-def run_stage_3(config: Dict, input_dir: str, ocr_dir: str, output_dir: str):
+def run_stage_3(config: Dict, input_dir: str, detection_dir: str, ocr_dir: str, output_dir: str):
     """Run Stage 3: Connection Derivation."""
     print("\n" + "="*60)
     print("STAGE 3: CONNECTION DERIVATION")
@@ -93,16 +131,30 @@ def run_stage_3(config: Dict, input_dir: str, ocr_dir: str, output_dir: str):
             print(f"Warning: Could not find image for {ocr_file}")
             continue
         
-        # Load OCR data and extract labels
-        from utils.io_utils import load_json
+        # Load detection data (has arrowheads) and OCR data (has text)
+        from .utils.io_utils import load_json
+        detection_file = Path(detection_dir) / f"{image_name}_detection.json"
+        detection_data = load_json(str(detection_file))
         ocr_data = load_json(str(ocr_file))
-        labels = ocr_engine.extract_decision_labels(ocr_data)
         
-        # Detect arrows with label assignment
-        result = arrow_detector.detect_arrows(image_path, ocr_data, labels)
+        # Merge: add text from OCR to detection elements
+        ocr_text_map = {e["id"]: e.get("text", "") for e in ocr_data["elements"]}
+        for elem in detection_data["elements"]:
+            elem["text"] = ocr_text_map.get(elem["id"], "")
+        
+        # Extract labels from full image (ja/nee text on arrows)
+        # This runs OCR on the full image to find small labels
+        if hasattr(ocr_engine, 'extract_labels_from_image'):
+            labels = ocr_engine.extract_labels_from_image(image_path)
+        else:
+            # Fallback to old method
+            labels = ocr_engine.extract_decision_labels(ocr_data)
+        
+        # Detect arrows with label assignment (using detection data with text)
+        result = arrow_detector.detect_arrows(image_path, detection_data, labels)
         
         # Save result
-        from utils.io_utils import save_json, ensure_dir
+        from .utils.io_utils import save_json, ensure_dir
         ensure_dir(output_dir)
         output_path = os.path.join(output_dir, f"{image_name}_arrows.json")
         save_json(result, output_path)
@@ -155,6 +207,11 @@ def main():
     input_dir = args.input_dir or paths_config.get('input_dir', 'data/input/tocaps')
     intermediate_dir = paths_config.get('intermediate_dir', 'data/intermediate')
     output_dir = args.output_dir or paths_config.get('output_dir', 'data/output')
+
+    
+    # Clear old intermediate and output files before running
+    stages_to_clear = [args.stage] if args.stage else None
+    clear_intermediate_files(intermediate_dir, output_dir, stages_to_clear)
     
     # Create intermediate subdirectories for each stage
     detection_dir = os.path.join(intermediate_dir, 'detection')
@@ -162,7 +219,7 @@ def main():
     arrows_dir = os.path.join(intermediate_dir, 'arrows')
     
     # Ensure directories exist
-    from utils.io_utils import ensure_dir
+    from .utils.io_utils import ensure_dir
     ensure_dir(detection_dir)
     ensure_dir(ocr_dir)
     ensure_dir(arrows_dir)
@@ -193,7 +250,7 @@ def main():
         print("\n" + "="*60)
         print("RUNNING STAGE 3: CONNECTION DERIVATION")
         print("="*60)
-        run_stage_3(config, input_dir, ocr_dir, arrows_dir)
+        run_stage_3(config, input_dir, detection_dir, ocr_dir, arrows_dir)
     
     print("\n" + "="*60)
     print("PIPELINE COMPLETE")
