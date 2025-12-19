@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 
 from ..utils.io_utils import save_json, ensure_dir
-from ..utils.visualization import draw_detectionsg_boxes
+from ..utils.visualization import draw_bounding_boxes
 
 
 class YOLODetector:
