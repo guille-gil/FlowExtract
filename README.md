@@ -2,7 +2,7 @@
 
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 
-Official repository for the APMS 2026 paper: **"FlowExtract: Procedural Knowledge Extraction from Maintenance Flowcharts"**.
+Official repository for the (submitted) APMS 2026 paper: **"FlowExtract: Procedural Knowledge Extraction from Maintenance Flowcharts"**.
 
 ## Overview
 
@@ -117,15 +117,14 @@ Evaluation metrics will be printed to stdout, and publication-ready charts (like
 
 ## Citation
 
-If you use FlowExtract in your research, please cite our APMS 2026 paper:
+If you use FlowExtract in your research, please cite our (submitted) APMS 2026 paper:
 
 ```bibtex
-@inproceedings{gil2026flowextract,
+@misc{gil2026flowextract,
   title={FlowExtract: Procedural Knowledge Extraction from Maintenance Flowcharts},
   author={Gil de Avalle, Guillermo and Maruster, Laura and Sloot, Eric and Emmanouilidis, Christos},
-  booktitle={Advances in Production Management Systems (APMS)},
-  year={2026},
-  organization={Springer}
+  note={Submitted to Advances in Production Management Systems (APMS)},
+  year={2026}
 }
 ```
 
