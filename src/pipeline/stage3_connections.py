@@ -1058,7 +1058,7 @@ class ArrowDetector:
         # Labels are typically ON the arrow line, so we find the closest label to each arrow's midpoint
         label_assignments = {}
         
-        # === LINE-BASED FALLBACK (OPTIONAL) ===
+        # LINE-BASED FALLBACK
         # Find edges without arrowheads (for alternative diagrams and missed arrowheads)
         # Uses standard flowchart direction heuristics (ISO 5807):
         # - Top → bottom for vertical flow
