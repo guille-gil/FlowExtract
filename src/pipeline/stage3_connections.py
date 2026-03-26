@@ -1059,7 +1059,7 @@ class ArrowDetector:
         label_assignments = {}
         
         # === LINE-BASED FALLBACK (OPTIONAL) ===
-        # Find edges without arrowheads (for OCAPs and missed arrowheads)
+        # Find edges without arrowheads (for alternative diagrams and missed arrowheads)
         # Uses standard flowchart direction heuristics (ISO 5807):
         # - Top → bottom for vertical flow
         # - Left → right for horizontal branches

@@ -1,5 +1,5 @@
 """
-Pipeline package for TOCAP diagram parsing.
+Pipeline package for diagram parsing.
 
 Contains all 3 stages:
 - Stage 1: Detection (YOLO)

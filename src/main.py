@@ -204,7 +204,7 @@ def main():
     
     # Get paths from config
     paths_config = config.get('paths', {})
-    input_dir = args.input_dir or paths_config.get('input_dir', 'data/input/tocaps')
+    input_dir = args.input_dir or paths_config.get('input_dir', 'data/input/documents')
     intermediate_dir = paths_config.get('intermediate_dir', 'data/intermediate')
     output_dir = args.output_dir or paths_config.get('output_dir', 'data/output')
 

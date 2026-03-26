@@ -5,7 +5,7 @@ Reorganize YOLO training data into clean train/val split.
 Current structure:
 - yolo_annotations/images/ - 24 images with UUID prefixes
 - yolo_annotations/labels/ - 24 labels with UUID prefixes  
-- tocaps/ - 24 clean images without UUIDs
+- documents/ - 24 clean images without UUIDs
 
 Target structure:
 - yolo_annotations/

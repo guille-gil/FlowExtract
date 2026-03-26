@@ -1,167 +1,134 @@
-# Decomposed Parsing from Industrial Troubleshooting Diagrams
+# FlowExtract: Procedural Knowledge Extraction from Maintenance Flowcharts
 
-A modular pipeline for extracting procedural knowledge from industrial troubleshooting diagrams using computer vision and OCR.
+[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 
-## Authors
+Official repository for the APMS 2026 paper: **"FlowExtract: Procedural Knowledge Extraction from Maintenance Flowcharts"**.
 
-- Guillermo Gil de Avalle Bellido (University of Groningen)
-- Laura Maruster (University of Groningen)
-- Christos Emmanouilidis (University of Groningen)
+## Overview
 
-## Performance
+Maintenance procedures in manufacturing facilities are often documented as flowcharts in static PDFs or scanned images. These documents encode procedural knowledge essential for asset lifecycle management but remain inaccessible to modern operator support systems. While Vision-Language Models (VLMs) struggle to reconstruct complex connection topologies from such diagrams, **FlowExtract** offers a robust, hybrid alternative.
 
-Evaluated on 7 test images:
+FlowExtract is a pipeline that deliberately separates element detection from connectivity reconstruction:
+1. **Node Detection**: Single-stage object detection (YOLOv8s) localized and classified symbols.
+2. **Text Extraction**: Deep-learning OCR (EasyOCR) extracts node content.
+3. **Edge Extraction**: Classical line-tracing (Hough Transform) derives directed graphs from detected arrowheads.
 
-| Component | Precision | Recall | F1 Score |
-|-----------|-----------|--------|----------|
-| **Node Detection** | 98.4% | 99.2% | 98.8% |
-| **Edge Detection** | 85.5% | 54.6% | 66.7% |
-| **Node Type Classification** | - | - | 97.6% |
-| **Edge Labels (ja/nee)** | - | - | 73.8% |
-| **OCR Text Match** | - | - | 99.2% |
+By focusing on high precision rather than forced recall, FlowExtract is explicitly designed for **Human-in-the-Loop (HITL)** workflows. The system provides a highly reliable structural skeleton of the standard operating procedure, allowing human validators to efficiently contribute completeness without having to untangle hallucinatory cross-links.
 
-### Per-Class Detection
+<p align="center">
+  <img src="docs/pipeline.png" alt="FlowExtract Pipeline Architecture" width="800"/>
+</p>
 
-| Class | Detection Rate |
-|-------|---------------|
-| Decision | 100% |
-| Document | 97.5% |
-| Process | 100% |
-| Connector | 100% |
-| Terminator | 100% |
-| Arrowhead | 73% |
+## Key Features & Results
 
-> **Note:** Arrowhead detection (73%) is the main bottleneck limiting edge recall.
+Evaluated on a dataset of real-world ISO 5807-standardized industrial troubleshooting guides, FlowExtract substantially outperforms state-of-the-art vision-language model baselines (such as Qwen2-VL-7B and Pixtral-12B) on graph extraction tasks.
 
-## Pipeline Architecture
+* **Node Detection (F1)**: `98.8%` *(vs best VLM: 34.0%)*
+* **Edge Detection (F1)**: `66.7%` *(vs best VLM: 10.7%)*
+* **Edge Precision**: `85.5%`
 
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Stage 1       │     │   Stage 2       │     │   Stage 3       │
-│   Detection     │────▶│   OCR           │────▶│   Connections   │
-│   (YOLOv8)      │     │   (EasyOCR)     │     │   (Line Trace)  │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-        │                       │                       │
-        ▼                       ▼                       ▼
-   6 element types         Text + Labels          Directed Graph
-```
+### Qualitative Performance
 
-### Stage 1: Element Detection
-- **Model:** YOLOv8s trained on 25 images
-- **Classes:** arrowhead, decision, document, process, connector, terminator
-- **Output:** Bounding boxes with class labels
+The pipeline successfully handles dense technical terminology, tightly spaced nodes, and overlapping edges, tracing multi-branching procedural paths accurately.
 
-### Stage 2: OCR Text Extraction
-- **Engine:** EasyOCR (Dutch)
-- **Function:** Extract text from detected boxes + identify ja/nee decision labels
-- **Output:** Text content per node
+<p align="center">
+  <img src="data/output/charts/qualitative_example2.png" alt="Extraction Example" width="400"/>
+</p>
+<p align="center">
+  <em>The original textual content within the nodes has been computationally redacted to anonymize proprietary procedural data, while preserving the structural morphology.</em>
+</p>
 
-### Stage 3: Connection Derivation
-- **Method:** Line tracing from arrowheads to boxes
-- **Direction:** Determined by arrowhead orientation (pointy end → target)
-- **Output:** Directed graph with nodes and edges
+---
 
-## Installation
+## Getting Started
 
-```bash
-# Clone repository
-git clone https://github.com/username/Decomposed-Parsing-from-Industrial-Troubleshooting-Guides.git
-cd Decomposed-Parsing-from-Industrial-Troubleshooting-Guides
+### Prerequisites
+* Python 3.9+
+* [Tesseract](https://github.com/tesseract-ocr/tesseract) (required by EasyOCR depending on OS)
+* MacOS M-series or CUDA-compatible GPU recommended for YOLO inference.
 
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate   # Windows
+### Installation
 
-# Install dependencies
-pip install -r requirements.txt
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/guille-gil/FlowExtract.git
+   cd FlowExtract
+   ```
+
+2. Create a virtual environment and install dependencies:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+3. Download the pre-trained model weights (if hosted externally) and place them in:
+   `runs/detect/train/weights/best.pt`
+
+## Repository Structure
+
+```text
+FlowExtract/
+├── docs/                      # Auxiliary documentation and paper figures
+├── data/
+│   ├── input/                 # Raw legacy PDFs/images and YOLO annotations
+│   ├── intermediate/          # Output of intermediate pipeline stages
+│   └── output/                # Final JSON graphs and metric charts
+├── scripts/
+│   ├── train_yolo.py          # Script for fine-tuning YOLOv8s
+│   └── generate_figure.py     # Qualitative validation chart generation
+├── src/                       
+│   ├── pipeline/              # Modulized extraction pipeline (Stages 1-3)
+│   ├── utils/                 # Bounding box spatial heuristics & visualization
+│   ├── main.py                # Main operational script
+│   └── evaluate.py            # End-to-end ground-truth metric evaluation
+└── README.md
 ```
 
 ## Usage
 
+### 1. Running the Pipeline
+To extract a directed graph from a raw flowchart image, run the main entry point:
+
 ```bash
-# Run full pipeline
-python -m src.main
-
-# Run individual stages
-python -m src.main --stage 1   # Detection only
-python -m src.main --stage 2   # OCR only
-python -m src.main --stage 3   # Connections only
-
-# Evaluate results
-python -m src.evaluate                     # Print metrics
-python -m src.evaluate --charts            # Generate charts
-python -m src.evaluate --output out.json   # Save to JSON
+python src/main.py
 ```
+This will parse the files in `data/input/images/test/` and output the structural JSON graphs to `data/intermediate/arrows/`.
 
-## Project Structure
+### 2. Evaluating Metrics
+To replicate the evaluation results found in the paper, execute the evaluation script. This will compare the extracted JSON graphs against the `data/input/final_annotations` ground truth:
 
+```bash
+python src/evaluate.py --charts
 ```
-├── src/
-│   ├── main.py                    # Pipeline entry point
-│   ├── evaluate.py                # Evaluation metrics + charts
-│   └── pipeline/
-│       ├── stage1_detector.py     # YOLOv8 detection
-│       ├── stage2_ocr.py          # EasyOCR text extraction
-│       └── stage3_connections.py  # Line tracing + graph construction
-├── scripts/
-│   └── train_yolo.py              # YOLO training script
-├── configs/
-│   └── pipeline_config.yaml       # Configuration
-├── data/
-│   ├── input/
-│   │   ├── images/                # Train/val/test images
-│   │   ├── labels/                # YOLO annotations
-│   │   └── final_annotations/     # Ground truth JSON
-│   ├── intermediate/              # Stage outputs
-│   └── output/                    # Final predictions
-└── runs/detect/train/weights/     # Trained model
-```
+Evaluation metrics will be printed to stdout, and publication-ready charts (like the ones generated for APMS) will be saved to `data/output/charts/`.
 
-## Output Format
-
-The pipeline produces a directed graph for each input image:
-
-```json
-{
-  "graph": {
-    "nodes": [
-      {"id": 0, "type": "decision", "text": "Is X correct?", "bbox": [100, 200, 150, 80]}
-    ],
-    "edges": [
-      {"source": 0, "target": 1, "type": "leads_to", "label": "nee"}
-    ]
-  },
-  "num_nodes": 15,
-  "num_edges": 14
+*Note: The Vision-Language Model (VLM) baseline results reported in our paper are evaluated on the same dataset in our prior work. If you reference those comparisons, please cite:*
+```bibtex
+@article{gilavalle2026procedural,
+  title={Procedural Knowledge Extraction from Industrial Troubleshooting Guides Using Vision Language Models},
+  author={Gil de Avalle, Guillermo and Maruster, Laura and Emmanouilidis, Christos},
+  journal={arXiv preprint arXiv:2601.22754},
+  year={2026}
 }
 ```
 
-## Dataset
-
-- **Total:** 35 industrial troubleshooting diagrams
-- **Split:** 25 train / 3 validation / 7 test
-- **Types:** Troubleshooting diagrams
-
-## Training
-
-To train YOLO on your own data:
-
-```bash
-python scripts/train_yolo.py --epochs 100
-```
-
-The trained model will be saved to `runs/detect/train/weights/best.pt`.
-
-
-See `requirements.txt` for full dependencies.
+---
 
 ## Citation
 
-...
+If you use FlowExtract in your research, please cite our APMS 2026 paper:
+
+```bibtex
+@inproceedings{gil2026flowextract,
+  title={FlowExtract: Procedural Knowledge Extraction from Maintenance Flowcharts},
+  author={Gil de Avalle, Guillermo and Maruster, Laura and Sloot, Eric and Emmanouilidis, Christos},
+  booktitle={Advances in Production Management Systems (APMS)},
+  year={2026},
+  organization={Springer}
+}
+```
 
 ## License
 
-This work is licensed under [CC BY-NC 4.0](LICENSE) - Creative Commons Attribution-NonCommercial 4.0 International.
-
-You may share and adapt this work for non-commercial purposes with attribution.
+This project is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)** license. See the [LICENSE](LICENSE) file for details.
