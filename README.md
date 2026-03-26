@@ -16,7 +16,7 @@ FlowExtract is a pipeline that deliberately separates element detection from con
 By focusing on high precision rather than forced recall, FlowExtract is explicitly designed for **Human-in-the-Loop (HITL)** workflows. The system provides a highly reliable structural skeleton of the standard operating procedure, allowing human validators to efficiently contribute completeness without having to untangle hallucinatory cross-links.
 
 <p align="center">
-  <img src="docs/pipeline.png" alt="FlowExtract Pipeline Architecture" width="800"/>
+  <img src="assets/pipeline.png" alt="FlowExtract Pipeline Architecture" width="800"/>
 </p>
 
 ## Key Features & Results
@@ -32,7 +32,7 @@ Evaluated on a dataset of real-world ISO 5807-standardized industrial troublesho
 The pipeline successfully handles dense technical terminology, tightly spaced nodes, and overlapping edges, tracing multi-branching procedural paths accurately.
 
 <p align="center">
-  <img src="data/output/charts/qualitative_example2.png" alt="Extraction Example" width="400"/>
+  <img src="assets/extraction_example.png" alt="Extraction Example" width="400"/>
 </p>
 <p align="center">
   <em>The original textual content within the nodes has been computationally redacted to anonymize proprietary procedural data, while preserving the structural morphology.</em>
