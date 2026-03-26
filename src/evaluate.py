@@ -285,19 +285,13 @@ def evaluate_stage3(arrows_dir: Path, gt_dir: Path) -> Dict:
 def print_results(stage1: Dict, stage2: Dict, stage3: Dict):
     """Print formatted evaluation results."""
     
-    print("\n" + "=" * 75)
     print("                    PIPELINE EVALUATION REPORT")
-    print("=" * 75)
     
     # ---------- STAGE 1 ----------
-    print("\n" + "─" * 75)
     print("STAGE 1: ELEMENT DETECTION (YOLO)")
-    print("─" * 75)
     
     print("\n  Per-Class Detection:")
-    print("  " + "─" * 50)
     print("  {:^15} {:^12} {:^12} {:^12}".format("Class", "Detected", "Ground Truth", "Rate"))
-    print("  " + "─" * 50)
     
     for cls_name in ['decision', 'document', 'process', 'connector', 'terminator', 'arrowhead']:
         data = stage1['per_class'].get(cls_name, {'detected': 0, 'gt': 0})
@@ -306,12 +300,9 @@ def print_results(stage1: Dict, stage2: Dict, stage3: Dict):
         print("  {:^15} {:^12} {:^12} {:^10.1%} {}".format(
             cls_name, data['detected'], data['gt'], rate, status
         ))
-    print("  " + "─" * 50)
     
     # ---------- STAGE 2 ----------
-    print("\n" + "─" * 75)
     print("STAGE 2: OCR TEXT EXTRACTION")
-    print("─" * 75)
     
     total_rate = stage2['total_matches'] / stage2['total_gt_nodes'] if stage2['total_gt_nodes'] > 0 else 0
     
@@ -319,19 +310,14 @@ def print_results(stage1: Dict, stage2: Dict, stage3: Dict):
     print(f"  Matched: {stage2['total_matches']}/{stage2['total_gt_nodes']} nodes")
     
     print("\n  Per-Image OCR Performance:")
-    print("  " + "─" * 55)
     print("  {:^30} {:^12} {:^12}".format("Image", "Text Rate", "Match Rate"))
-    print("  " + "─" * 55)
     for r in stage2['per_image']:
         print("  {:^30} {:^12.1%} {:^12.1%}".format(
             r['image'][:28], r['text_extract_rate'], r['match_rate']
         ))
-    print("  " + "─" * 55)
     
     # ---------- STAGE 3 ----------
-    print("\n" + "─" * 75)
     print("STAGE 3: CONNECTION DERIVATION")
-    print("─" * 75)
     
     # Overall metrics
     node_metrics = calculate_metrics(
@@ -347,54 +333,41 @@ def print_results(stage1: Dict, stage2: Dict, stage3: Dict):
     type_acc = stage3['node_totals']['type_correct'] / stage3['node_totals']['type_total'] if stage3['node_totals']['type_total'] > 0 else 0
     label_acc = stage3['edge_totals']['label_correct'] / stage3['edge_totals']['label_total'] if stage3['edge_totals']['label_total'] > 0 else 0
     
-    print("\n  ┌" + "─" * 58 + "┐")
-    print("  │{:^58}│".format("OVERALL GRAPH CONSTRUCTION"))
-    print("  ├" + "─" * 18 + "┬" + "─" * 12 + "┬" + "─" * 12 + "┬" + "─" * 12 + "┤")
-    print("  │{:^18}│{:^12}│{:^12}│{:^12}│".format("Metric", "Precision", "Recall", "F1"))
-    print("  ├" + "─" * 18 + "┼" + "─" * 12 + "┼" + "─" * 12 + "┼" + "─" * 12 + "┤")
-    print("  │{:^18}│{:^12.1%}│{:^12.1%}│{:^12.1%}│".format(
+    print("    {:^58}  ".format("OVERALL GRAPH CONSTRUCTION"))
+    print("    {:^18}  {:^12}  {:^12}  {:^12}  ".format("Metric", "Precision", "Recall", "F1"))
+    print("    {:^18}  {:^12.1%}  {:^12.1%}  {:^12.1%}  ".format(
         "Node Detection", node_metrics['precision'], node_metrics['recall'], node_metrics['f1']
     ))
-    print("  │{:^18}│{:^12}│{:^12}│{:^12.1%}│".format("Node Types", "-", "-", type_acc))
-    print("  │{:^18}│{:^12.1%}│{:^12.1%}│{:^12.1%}│".format(
+    print("    {:^18}  {:^12}  {:^12}  {:^12.1%}  ".format("Node Types", "-", "-", type_acc))
+    print("    {:^18}  {:^12.1%}  {:^12.1%}  {:^12.1%}  ".format(
         "Edge Detection", edge_metrics['precision'], edge_metrics['recall'], edge_metrics['f1']
     ))
-    print("  │{:^18}│{:^12}│{:^12}│{:^12.1%}│".format("Edge Labels", "-", "-", label_acc))
-    print("  └" + "─" * 18 + "┴" + "─" * 12 + "┴" + "─" * 12 + "┴" + "─" * 12 + "┘")
+    print("    {:^18}  {:^12}  {:^12}  {:^12.1%}  ".format("Edge Labels", "-", "-", label_acc))
     
     # Per-type accuracy
     print("\n  Node Type Classification Accuracy:")
-    print("  " + "─" * 45)
     print("  {:^15} {:^12} {:^12}".format("Type", "Correct", "Accuracy"))
-    print("  " + "─" * 45)
     for type_name in sorted(stage3['per_type'].keys()):
         data = stage3['per_type'][type_name]
         acc = data['correct'] / data['total'] if data['total'] > 0 else 0
         print("  {:^15} {:>5}/{:<5} {:^12.1%}".format(type_name, data['correct'], data['total'], acc))
-    print("  " + "─" * 45)
     
     # Label accuracy
     print("\n  Edge Label Accuracy:")
-    print("  " + "─" * 50)
     print("  {:^10} {:^12} {:^12} {:^12}".format("Label", "Predicted", "GT", "Correct"))
-    print("  " + "─" * 50)
     for label in sorted(stage3['per_label'].keys()):
         data = stage3['per_label'][label]
         print("  {:^10} {:^12} {:^12} {:^12}".format(
             label, data['predicted'], data['gt'], data['correct']
         ))
-    print("  " + "─" * 50)
     
     # Per-image breakdown
     print("\n  Per-Image Performance:")
-    print("  " + "─" * 70)
     print("  {:^32} {:>10} {:>10} {:>10} {:>8}".format("Image", "Node F1", "Edge F1", "Type Acc", "Labels"))
-    print("  " + "─" * 70)
     for r in sorted(stage3['per_image'], key=lambda x: x['edges']['f1'], reverse=True):
         print("  {:^32} {:>10.1%} {:>10.1%} {:>10.1%} {:>8.1%}".format(
             r['image'][:30], r['nodes']['f1'], r['edges']['f1'], r['type_acc'], r['label_acc']
         ))
-    print("  " + "─" * 70)
     
     # Detailed counts
     print("\n  Counts:")
@@ -402,9 +375,7 @@ def print_results(stage1: Dict, stage2: Dict, stage3: Dict):
     print(f"    Edges: {stage3['edge_totals']['tp']} correct, {stage3['edge_totals']['fp']} FP, {stage3['edge_totals']['fn']} FN")
     
     # ========== SUMMARY ==========
-    print("\n" + "=" * 75)
     print("                         SUMMARY")
-    print("=" * 75)
     
     print(f"""
   Stage 1 (Detection):

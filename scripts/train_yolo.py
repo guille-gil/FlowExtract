@@ -98,9 +98,7 @@ def train_yolo(config, use_pretrained=None):
         verbose=True
     )
     
-    print("\n" + "="*60)
     print("TRAINING COMPLETE!")
-    print("="*60)
     print(f"Best model saved to: runs/detect/train/weights/best.pt")
     print(f"Last model saved to: runs/detect/train/weights/last.pt")
     print(f"\nTo use this model in the pipeline:")

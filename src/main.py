@@ -57,9 +57,7 @@ def clear_intermediate_files(intermediate_dir: str, output_dir: str = None, stag
 
 def run_stage_1(config: Dict, input_dir: str, output_dir: str):
     """Run Stage 1: Element Detection."""
-    print("\n" + "="*60)
     print("STAGE 1: ELEMENT DETECTION")
-    print("="*60)
     
     detector = ElementDetector(config)
     results = detector.process_directory(input_dir, output_dir)
@@ -70,9 +68,7 @@ def run_stage_1(config: Dict, input_dir: str, output_dir: str):
 
 def run_stage_2(config: Dict, input_dir: str, detection_dir: str, output_dir: str):
     """Run Stage 2: OCR."""
-    print("\n" + "="*60)
     print("STAGE 2: OCR TEXT EXTRACTION")
-    print("="*60)
     
     ocr_engine = OCREngine(config)
     
@@ -105,9 +101,7 @@ def run_stage_2(config: Dict, input_dir: str, detection_dir: str, output_dir: st
 
 def run_stage_3(config: Dict, input_dir: str, detection_dir: str, ocr_dir: str, output_dir: str):
     """Run Stage 3: Connection Derivation."""
-    print("\n" + "="*60)
     print("STAGE 3: CONNECTION DERIVATION")
-    print("="*60)
     
     arrow_detector = ArrowDetector(config)
     ocr_engine = OCREngine(config)  # For label extraction
@@ -225,9 +219,7 @@ def main():
     ensure_dir(arrows_dir)
     ensure_dir(output_dir)
     
-    print("="*60)
     print("DECOMPOSED PARSING PIPELINE (3 STAGES)")
-    print("="*60)
     print(f"Input: {input_dir}")
     print(f"Intermediate: {intermediate_dir}")
     print(f"Output: {output_dir}")
@@ -235,26 +227,18 @@ def main():
     
     # Run selected stage(s)
     if args.stage in ['all', '1']:
-        print("\n" + "="*60)
         print("RUNNING STAGE 1: ELEMENT DETECTION")
-        print("="*60)
         run_stage_1(config, input_dir, detection_dir)
     
     if args.stage in ['all', '2']:
-        print("\n" + "="*60)
         print("RUNNING STAGE 2: OCR TEXT EXTRACTION")
-        print("="*60)
         run_stage_2(config, input_dir, detection_dir, ocr_dir)
     
     if args.stage in ['all', '3']:
-        print("\n" + "="*60)
         print("RUNNING STAGE 3: CONNECTION DERIVATION")
-        print("="*60)
         run_stage_3(config, input_dir, detection_dir, ocr_dir, arrows_dir)
     
-    print("\n" + "="*60)
     print("PIPELINE COMPLETE")
-    print("="*60)
     print(f"\nIntermediate results: {intermediate_dir}/")
     print(f"  - Detection: {detection_dir}/")
     print(f"  - OCR: {ocr_dir}/")
