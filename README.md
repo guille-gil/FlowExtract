@@ -134,6 +134,3 @@ If you use FlowExtract in your research, please cite our APMS 2026 paper:
 ## License
 
 This project's source code is licensed under the **MIT License**, which permits commercial use and modifications provided that original attribution remains. See the [LICENSE](LICENSE) file for full details.
-
-**⚠️ strictly protected: Philips Data**
-Any physical datasets, diagrams, flowcharts, or manual excerpts within this repository (particularly under `data/`) contain proprietary information belonging to **Philips**. These materials are **explicitly excluded** from the open-source license and are strictly confidential. They may not be copied, distributed, modified, or used under any circumstances without authorized permission from Philips. All rights to the data are reserved.
