@@ -1,6 +1,6 @@
 # FlowExtract: Procedural Knowledge Extraction from Maintenance Flowcharts
 
-[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Official repository for the (submitted) APMS 2026 paper: **"FlowExtract: Procedural Knowledge Extraction from Maintenance Flowcharts"**.
 
@@ -133,4 +133,7 @@ If you use FlowExtract in your research, please cite our APMS 2026 paper:
 
 ## License
 
-This project is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)** license. See the [LICENSE](LICENSE) file for details.
+This project's source code is licensed under the **MIT License**, which permits commercial use and modifications provided that original attribution remains. See the [LICENSE](LICENSE) file for full details.
+
+**⚠️ strictly protected: Philips Data**
+Any physical datasets, diagrams, flowcharts, or manual excerpts within this repository (particularly under `data/`) contain proprietary information belonging to **Philips**. These materials are **explicitly excluded** from the open-source license and are strictly confidential. They may not be copied, distributed, modified, or used under any circumstances without authorized permission from Philips. All rights to the data are reserved.
