@@ -115,18 +115,21 @@ Evaluation metrics will be printed to stdout, and publication-ready charts (like
 
 ---
 
+<!-- 
 ## Citation
 
-If you use FlowExtract in your research, please cite our (submitted) APMS 2026 paper:
+If you use FlowExtract in your research, please cite our APMS 2026 paper:
 
 ```bibtex
-@misc{gil2026flowextract,
+@inproceedings{gil2026flowextract,
   title={FlowExtract: Procedural Knowledge Extraction from Maintenance Flowcharts},
   author={Gil de Avalle, Guillermo and Maruster, Laura and Sloot, Eric and Emmanouilidis, Christos},
-  note={Submitted to Advances in Production Management Systems (APMS)},
-  year={2026}
+  booktitle={Advances in Production Management Systems (APMS)},
+  year={2026},
+  organization={Springer}
 }
 ```
+-->
 
 ## License
 
